@@ -1,13 +1,11 @@
-const DEFAULT_API_BASE_URL = "http://localhost:5000/api";
-const DEFAULT_SOCKET_URL = "http://localhost:5000";
+const DEFAULT_API_BASE_URL = "/api";
+const DEFAULT_SOCKET_URL = "";
 
 export const API_BASE_URL = normalizeBaseUrl(
   import.meta.env.VITE_API_URL || DEFAULT_API_BASE_URL,
 );
 
-export const SOCKET_URL = normalizeBaseUrl(
-  import.meta.env.VITE_SOCKET_URL || DEFAULT_SOCKET_URL,
-);
+export const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || DEFAULT_SOCKET_URL;
 
 function normalizeBaseUrl(url: string) {
   return url.replace(/\/$/, "");
