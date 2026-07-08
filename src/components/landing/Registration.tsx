@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { z } from "zod";
 import { CheckCircle2, Loader2, Rocket } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,118 +13,157 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+import { registerTeam } from "@/lib/hackathon-api";
+
+const GENDER_OPTIONS = [
+  { value: "male", label: "Male" },
+  { value: "female", label: "Female" },
+  { value: "other", label: "Other" },
+  { value: "prefer_not_to_say", label: "Prefer not to say" },
+] as const;
+
+const memberKeys = [
+  {
+    number: 2,
+    nameKey: "member2Name",
+    emailKey: "member2Email",
+    branchKey: "member2Branch",
+    yearKey: "member2Year",
+    genderKey: "member2Gender",
+  },
+  {
+    number: 3,
+    nameKey: "member3Name",
+    emailKey: "member3Email",
+    branchKey: "member3Branch",
+    yearKey: "member3Year",
+    genderKey: "member3Gender",
+  },
+  {
+    number: 4,
+    nameKey: "member4Name",
+    emailKey: "member4Email",
+    branchKey: "member4Branch",
+    yearKey: "member4Year",
+    genderKey: "member4Gender",
+  },
+] as const;
+
 const schema = z.object({
-  fullName: z
-    .string()
-    .trim()
-    .min(2, "Name must be at least 2 characters")
-    .max(80, "Name must be under 80 characters"),
-  email: z
-    .string()
-    .trim()
-    .email("Enter a valid email")
-    .max(255, "Email too long"),
-  member1Name: z.string().trim().max(80, "Name too long"),
-  member1Gender: z.enum(["male", "female", "other", ""]),
-  member2Name: z.string().trim().max(80, "Name too long"),
-  member2Gender: z.enum(["male", "female", "other", ""]),
-  member3Name: z.string().trim().max(80, "Name too long"),
-  member3Gender: z.enum(["male", "female", "other", ""]),
-  member4Name: z.string().trim().max(80, "Name too long"),
-  member4Gender: z.enum(["male", "female", "other", ""]),
-  teamName: z
-    .string()
-    .trim()
-    .min(2, "Team name is required")
-    .max(60, "Team name too long"),
-  college: z
-    .string()
-    .trim()
-    .min(2, "College is required")
-    .max(120, "College name too long"),
-  teamSize: z.enum(["1", "2", "3", "4"], {
-    message: "Select a team size",
+  teamName: z.string().trim().min(2, "Team name is required").max(60, "Team name too long"),
+  collegeName: z.string().trim().min(2, "College is required").max(120, "College name too long"),
+  teamSize: z.enum(["1", "2", "3", "4"], { message: "Select a team size" }),
+  track: z.enum(["ai", "web3", "climate", "open"], { message: "Pick a track" }),
+  leaderName: z.string().trim().min(2, "Leader name is required").max(80, "Name too long"),
+  leaderEmail: z.string().trim().email("Enter a valid email").max(255, "Email too long"),
+  leaderPhone: z.string().trim().regex(/^\+?[0-9]{7,15}$/, "Enter a valid phone number"),
+  leaderBranch: z.string().trim().min(2, "Leader branch is required").max(80, "Branch too long"),
+  leaderYear: z.string().trim().min(1, "Leader year is required").max(20, "Year too long"),
+  leaderGender: z.enum(["male", "female", "other", "prefer_not_to_say"], {
+    message: "Select a gender",
   }),
-  track: z.enum(["ai", "web3", "climate", "open"], {
-    message: "Pick a track",
-  }),
-  idea: z
+  ideaPitch: z
     .string()
     .trim()
     .min(20, "Tell us at least 20 characters about your idea")
-    .max(500, "Keep it under 500 characters"),
+    .max(1000, "Keep it under 1000 characters"),
+  member2Name: z.string().trim().max(80, "Name too long"),
+  member2Email: z.string().trim().email("Enter a valid email").or(z.literal("")),
+  member2Branch: z.string().trim().max(80, "Branch too long"),
+  member2Year: z.string().trim().max(20, "Year too long"),
+  member2Gender: z.enum(["male", "female", "other", "prefer_not_to_say", ""], {
+    message: "Select a gender",
+  }),
+  member3Name: z.string().trim().max(80, "Name too long"),
+  member3Email: z.string().trim().email("Enter a valid email").or(z.literal("")),
+  member3Branch: z.string().trim().max(80, "Branch too long"),
+  member3Year: z.string().trim().max(20, "Year too long"),
+  member3Gender: z.enum(["male", "female", "other", "prefer_not_to_say", ""], {
+    message: "Select a gender",
+  }),
+  member4Name: z.string().trim().max(80, "Name too long"),
+  member4Email: z.string().trim().email("Enter a valid email").or(z.literal("")),
+  member4Branch: z.string().trim().max(80, "Branch too long"),
+  member4Year: z.string().trim().max(20, "Year too long"),
+  member4Gender: z.enum(["male", "female", "other", "prefer_not_to_say", ""], {
+    message: "Select a gender",
+  }),
 });
 
 type FormValues = z.infer<typeof schema>;
 type Errors = Partial<Record<keyof FormValues, string>>;
 
 const initial: Record<keyof FormValues, string> = {
-  fullName: "",
-  email: "",
-  member1Name: "",
-  member1Gender: "",
-  member2Name: "",
-  member2Gender: "",
-  member3Name: "",
-  member3Gender: "",
-  member4Name: "",
-  member4Gender: "",
   teamName: "",
-  college: "",
+  collegeName: "",
   teamSize: "",
   track: "",
-  idea: "",
+  leaderName: "",
+  leaderEmail: "",
+  leaderPhone: "",
+  leaderBranch: "",
+  leaderYear: "",
+  leaderGender: "",
+  ideaPitch: "",
+  member2Name: "",
+  member2Email: "",
+  member2Branch: "",
+  member2Year: "",
+  member2Gender: "",
+  member3Name: "",
+  member3Email: "",
+  member3Branch: "",
+  member3Year: "",
+  member3Gender: "",
+  member4Name: "",
+  member4Email: "",
+  member4Branch: "",
+  member4Year: "",
+  member4Gender: "",
 };
 
-const MEMBER_FIELDS = [
-  { number: 1, nameKey: "member1Name", genderKey: "member1Gender" },
-  { number: 2, nameKey: "member2Name", genderKey: "member2Gender" },
-  { number: 3, nameKey: "member3Name", genderKey: "member3Gender" },
-  { number: 4, nameKey: "member4Name", genderKey: "member4Gender" },
-] as const;
-
 const STEPS = [
-  { title: "Team Information", fields: ["teamName", "teamSize", "track", "college"] as const },
+  { title: "Team Information", fields: ["teamName", "teamSize", "track", "collegeName"] as const },
   {
-    title: "Team Members",
-    fields: [
-      "member1Name",
-      "member1Gender",
-      "member2Name",
-      "member2Gender",
-      "member3Name",
-      "member3Gender",
-      "member4Name",
-      "member4Gender",
-    ] as const,
+    title: "Leader Details",
+    fields: ["leaderName", "leaderEmail", "leaderPhone", "leaderBranch", "leaderYear", "leaderGender"] as const,
   },
-  { title: "Contact & Idea", fields: ["fullName", "email", "idea"] as const },
+  { title: "Members & Idea", fields: ["ideaPitch"] as const },
   { title: "Review & Submit", fields: [] as const },
 ] as const;
 
 export function Registration() {
   const [values, setValues] = useState(initial);
   const [errors, setErrors] = useState<Errors>({});
-  const [status, setStatus] = useState<"idle" | "submitting" | "success">("idle");
+  const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
   const [step, setStep] = useState(0);
   const [submitArmed, setSubmitArmed] = useState(false);
+  const [serverMessage, setServerMessage] = useState<string | null>(null);
+
+  const memberCount = Math.max(0, Math.min(3, (Number(values.teamSize) || 0) - 1));
 
   const update = (key: keyof FormValues, val: string) => {
     if (key === "teamSize") {
-      const size = Math.max(0, Math.min(4, Number(val) || 0));
-      setValues((v) => {
-        const next = { ...v, teamSize: val };
-        for (const member of MEMBER_FIELDS.slice(size)) {
+      const nextCount = Math.max(0, Math.min(3, (Number(val) || 0) - 1));
+      setValues((current) => {
+        const next = { ...current, teamSize: val };
+        for (const member of memberKeys.slice(nextCount)) {
           next[member.nameKey] = "";
+          next[member.emailKey] = "";
+          next[member.branchKey] = "";
+          next[member.yearKey] = "";
           next[member.genderKey] = "";
         }
         return next;
       });
 
-      setErrors((prev) => {
-        const next = { ...prev };
-        for (const member of MEMBER_FIELDS.slice(size)) {
+      setErrors((current) => {
+        const next = { ...current };
+        for (const member of memberKeys.slice(nextCount)) {
           next[member.nameKey] = undefined;
+          next[member.emailKey] = undefined;
+          next[member.branchKey] = undefined;
+          next[member.yearKey] = undefined;
           next[member.genderKey] = undefined;
         }
         return next;
@@ -132,51 +171,92 @@ export function Registration() {
       return;
     }
 
-    setValues((v) => ({ ...v, [key]: val }));
-    if (errors[key]) setErrors((e) => ({ ...e, [key]: undefined }));
+    setValues((current) => ({ ...current, [key]: val }));
+    if (errors[key]) {
+      setErrors((current) => ({ ...current, [key]: undefined }));
+    }
   };
 
-  const getSelectedMemberCount = () => Math.max(0, Math.min(4, Number(values.teamSize) || 0));
-
   const validateSelectedMembers = () => {
-    const count = getSelectedMemberCount();
-    const selected = MEMBER_FIELDS.slice(0, count);
-    const memberErrors: Errors = {};
+    const errorsToApply: Errors = {};
+    const selected = memberKeys.slice(0, memberCount);
 
     for (const member of selected) {
       const nameValue = values[member.nameKey].trim();
+      const emailValue = values[member.emailKey].trim();
+      const branchValue = values[member.branchKey].trim();
+      const yearValue = values[member.yearKey].trim();
+
       if (nameValue.length < 2) {
-        memberErrors[member.nameKey] = `Member ${member.number} name is required`;
+        errorsToApply[member.nameKey] = `Member ${member.number} name is required`;
+      }
+
+      if (!emailValue) {
+        errorsToApply[member.emailKey] = `Member ${member.number} email is required`;
+      }
+
+      if (!branchValue) {
+        errorsToApply[member.branchKey] = `Member ${member.number} branch is required`;
+      }
+
+      if (!yearValue) {
+        errorsToApply[member.yearKey] = `Member ${member.number} year is required`;
       }
 
       if (!values[member.genderKey]) {
-        memberErrors[member.genderKey] = `Select gender for member ${member.number}`;
+        errorsToApply[member.genderKey] = `Select gender for member ${member.number}`;
       }
     }
 
-    const hasFemale = selected.some((member) => values[member.genderKey] === "female");
-    if (!hasFemale && selected.length > 0) {
-      memberErrors[selected[0].genderKey] = "At least one girl member is required in the team";
+    const genders = [values.leaderGender, ...selected.map((member) => values[member.genderKey])];
+    const hasFemaleMember = genders.some((gender) => gender === "female");
+
+    if (!hasFemaleMember && (selected.length > 0 || values.leaderGender)) {
+      const femaleField = selected[0]?.genderKey ?? "leaderGender";
+      errorsToApply[femaleField] = "At least one female member is required in the team";
     }
 
-    setErrors((prev) => {
-      const next = { ...prev };
-      for (const member of MEMBER_FIELDS) {
+    const emails = [
+      values.leaderEmail.trim().toLowerCase(),
+      ...selected.map((member) => values[member.emailKey].trim().toLowerCase()),
+    ].filter(Boolean);
+
+    const names = [
+      values.leaderName.trim().toLowerCase(),
+      ...selected.map((member) => values[member.nameKey].trim().toLowerCase()),
+    ].filter(Boolean);
+
+    if (new Set(emails).size !== emails.length) {
+      errorsToApply.leaderEmail = errorsToApply.leaderEmail || "Duplicate emails are not allowed";
+    }
+
+    if (new Set(names).size !== names.length) {
+      errorsToApply.leaderName = errorsToApply.leaderName || "Duplicate member names are not allowed";
+    }
+
+    setErrors((current) => {
+      const next = { ...current };
+      for (const member of memberKeys) {
         next[member.nameKey] = undefined;
+        next[member.emailKey] = undefined;
+        next[member.branchKey] = undefined;
+        next[member.yearKey] = undefined;
         next[member.genderKey] = undefined;
       }
-      return { ...next, ...memberErrors };
+      next.leaderEmail = undefined;
+      next.leaderName = undefined;
+      return { ...next, ...errorsToApply };
     });
 
-    return Object.keys(memberErrors).length === 0;
+    return Object.keys(errorsToApply).length === 0;
   };
 
   const validateFields = (fields: ReadonlyArray<keyof FormValues>) => {
     const parsed = schema.safeParse(values);
 
     if (parsed.success) {
-      setErrors((prev) => {
-        const next = { ...prev };
+      setErrors((current) => {
+        const next = { ...current };
         for (const field of fields) {
           next[field] = undefined;
         }
@@ -193,33 +273,57 @@ export function Registration() {
       }
     }
 
-    setErrors((prev) => ({ ...prev, ...stepErrors }));
+    setErrors((current) => ({ ...current, ...stepErrors }));
     return Object.keys(stepErrors).length === 0;
   };
 
   const nextStep = () => {
-    if (step === 1) {
+    if (step === 2) {
       if (!validateSelectedMembers()) return;
+      if (!validateFields(STEPS[step].fields)) return;
     } else {
-      const fields = STEPS[step].fields;
-      if (!validateFields(fields)) return;
+      if (!validateFields(STEPS[step].fields)) return;
     }
 
-    setStep((s) => Math.min(s + 1, STEPS.length - 1));
+    setStep((current) => Math.min(current + 1, STEPS.length - 1));
   };
 
   const prevStep = () => {
-    setStep((s) => Math.max(s - 1, 0));
+    setStep((current) => Math.max(current - 1, 0));
   };
+
+  const buildPayload = () => ({
+    teamName: values.teamName.trim(),
+    collegeName: values.collegeName.trim(),
+    track: values.track,
+    teamSize: Number(values.teamSize),
+    ideaPitch: values.ideaPitch.trim(),
+    leader: {
+      name: values.leaderName.trim(),
+      email: values.leaderEmail.trim().toLowerCase(),
+      phone: values.leaderPhone.trim(),
+      branch: values.leaderBranch.trim(),
+      year: values.leaderYear.trim(),
+      gender: values.leaderGender,
+    },
+    members: memberKeys.slice(0, memberCount).map((member) => ({
+      name: values[member.nameKey].trim(),
+      email: values[member.emailKey].trim().toLowerCase(),
+      branch: values[member.branchKey].trim(),
+      year: values[member.yearKey].trim(),
+      gender: values[member.genderKey],
+    })),
+  });
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (step !== STEPS.length - 1) return;
     if (!submitArmed) return;
     setSubmitArmed(false);
+    setServerMessage(null);
 
     if (!validateSelectedMembers()) {
-      setStep(1);
+      setStep(2);
       return;
     }
 
@@ -227,15 +331,25 @@ export function Registration() {
     if (!parsed.success) {
       const fieldErrors: Errors = {};
       for (const issue of parsed.error.issues) {
-        const k = issue.path[0] as keyof FormValues;
-        if (!fieldErrors[k]) fieldErrors[k] = issue.message;
+        const key = issue.path[0] as keyof FormValues;
+        if (!fieldErrors[key]) {
+          fieldErrors[key] = issue.message;
+        }
       }
       setErrors(fieldErrors);
       return;
     }
+
     setStatus("submitting");
-    await new Promise((r) => setTimeout(r, 900));
-    setStatus("success");
+
+    try {
+      const response = await registerTeam(buildPayload());
+      setStatus("success");
+      setServerMessage(`Team ${response.team.teamName} registered successfully.`);
+    } catch (requestError) {
+      setStatus("error");
+      setServerMessage(requestError instanceof Error ? requestError.message : "Registration failed");
+    }
   };
 
   const reset = () => {
@@ -244,10 +358,10 @@ export function Registration() {
     setStatus("idle");
     setStep(0);
     setSubmitArmed(false);
+    setServerMessage(null);
   };
 
   const current = STEPS[step];
-  const selectedMemberCount = getSelectedMemberCount();
 
   return (
     <section id="register" className="relative border-t border-border/40 py-20 sm:py-24">
@@ -272,13 +386,10 @@ export function Registration() {
                 <CheckCircle2 className="h-8 w-8 text-primary" />
               </div>
               <h3 className="mt-5 font-mono text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-                You're in orbit, {values.fullName.split(" ")[0]}!
+                You&apos;re in orbit, {values.teamName}!
               </h3>
               <p className="mt-2 max-w-md text-sm text-muted-foreground">
-                A confirmation has been queued for{" "}
-                <span className="font-mono text-primary">{values.email}</span>. Team{" "}
-                <span className="font-mono text-foreground">{values.teamName}</span> is
-                registered for Round 1.
+                <span className="font-mono text-primary">{serverMessage}</span>
               </p>
               <Button
                 onClick={reset}
@@ -297,6 +408,12 @@ export function Registration() {
                 <p className="mt-1 font-mono text-[11px] text-muted-foreground">-----------------</p>
                 <h3 className="mt-2 font-mono text-lg font-bold text-foreground">{current.title}</h3>
               </div>
+
+              {serverMessage && status === "error" && (
+                <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                  {serverMessage}
+                </div>
+              )}
 
               {step === 0 && (
                 <div className="grid gap-4 sm:grid-cols-2 sm:gap-5">
@@ -338,13 +455,13 @@ export function Registration() {
                     </Select>
                   </Field>
 
-                  <Field label="College" error={errors.college} className="sm:col-span-2">
+                  <Field label="College" error={errors.collegeName} className="sm:col-span-2">
                     <Input
-                      value={values.college}
-                      onChange={(e) => update("college", e.target.value)}
+                      value={values.collegeName}
+                      onChange={(e) => update("collegeName", e.target.value)}
                       placeholder="Your college or university"
                       maxLength={120}
-                      aria-invalid={!!errors.college}
+                      aria-invalid={!!errors.collegeName}
                     />
                   </Field>
                 </div>
@@ -352,94 +469,186 @@ export function Registration() {
 
               {step === 1 && (
                 <div className="grid gap-4 sm:grid-cols-2 sm:gap-5">
-                  <div className="sm:col-span-2 rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-sm text-primary">
-                    Note: At least one girl member should be in the team.
-                  </div>
+                  <Field label="Leader name" error={errors.leaderName} className="sm:col-span-1">
+                    <Input
+                      value={values.leaderName}
+                      onChange={(e) => update("leaderName", e.target.value)}
+                      placeholder="Ada Lovelace"
+                      maxLength={80}
+                      aria-invalid={!!errors.leaderName}
+                    />
+                  </Field>
 
-                  {selectedMemberCount === 0 && (
-                    <div className="sm:col-span-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                      Select team size in Step 1 to enter member details.
-                    </div>
-                  )}
+                  <Field label="Leader email" error={errors.leaderEmail} className="sm:col-span-1">
+                    <Input
+                      type="email"
+                      value={values.leaderEmail}
+                      onChange={(e) => update("leaderEmail", e.target.value)}
+                      placeholder="you@domain.com"
+                      maxLength={255}
+                      aria-invalid={!!errors.leaderEmail}
+                    />
+                  </Field>
 
-                  {MEMBER_FIELDS.slice(0, selectedMemberCount).map((member) => (
-                    <div key={`member-${member.number}`} className="contents">
-                      <Field
-                        label={`Member ${member.number} Name`}
-                        error={errors[member.nameKey]}
-                        className="sm:col-span-1"
-                      >
-                        <Input
-                          value={values[member.nameKey]}
-                          onChange={(e) => update(member.nameKey, e.target.value)}
-                          placeholder={`Member ${member.number} full name`}
-                          maxLength={80}
-                          aria-invalid={!!errors[member.nameKey]}
-                        />
-                      </Field>
+                  <Field label="Leader phone" error={errors.leaderPhone} className="sm:col-span-1">
+                    <Input
+                      value={values.leaderPhone}
+                      onChange={(e) => update("leaderPhone", e.target.value)}
+                      placeholder="+919876543210"
+                      maxLength={16}
+                      aria-invalid={!!errors.leaderPhone}
+                    />
+                  </Field>
 
-                      <Field
-                        label={`Member ${member.number} Gender`}
-                        error={errors[member.genderKey]}
-                        className="sm:col-span-1"
-                      >
-                        <Select
-                          value={values[member.genderKey]}
-                          onValueChange={(v) => update(member.genderKey, v)}
-                        >
-                          <SelectTrigger aria-invalid={!!errors[member.genderKey]}>
-                            <SelectValue placeholder="Select gender" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="male">Male</SelectItem>
-                            <SelectItem value="female">Female</SelectItem>
-                            <SelectItem value="other">Other</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </Field>
-                    </div>
-                  ))}
+                  <Field label="Leader branch" error={errors.leaderBranch} className="sm:col-span-1">
+                    <Input
+                      value={values.leaderBranch}
+                      onChange={(e) => update("leaderBranch", e.target.value)}
+                      placeholder="Computer Science"
+                      maxLength={80}
+                      aria-invalid={!!errors.leaderBranch}
+                    />
+                  </Field>
+
+                  <Field label="Leader year" error={errors.leaderYear} className="sm:col-span-1">
+                    <Input
+                      value={values.leaderYear}
+                      onChange={(e) => update("leaderYear", e.target.value)}
+                      placeholder="3"
+                      maxLength={20}
+                      aria-invalid={!!errors.leaderYear}
+                    />
+                  </Field>
+
+                  <Field label="Leader gender" error={errors.leaderGender} className="sm:col-span-1">
+                    <Select value={values.leaderGender} onValueChange={(v) => update("leaderGender", v)}>
+                      <SelectTrigger aria-invalid={!!errors.leaderGender}>
+                        <SelectValue placeholder="Select gender" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {GENDER_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
                 </div>
               )}
 
               {step === 2 && (
-                <div className="grid gap-4 sm:grid-cols-2 sm:gap-5">
-                  <Field label="Full name" error={errors.fullName} className="sm:col-span-1">
-                    <Input
-                      value={values.fullName}
-                      onChange={(e) => update("fullName", e.target.value)}
-                      placeholder="Ada Lovelace"
-                      maxLength={80}
-                      aria-invalid={!!errors.fullName}
-                    />
-                  </Field>
+                <div className="space-y-6">
+                  <div className="rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-sm text-primary">
+                    Leader counts as member 1. Add the remaining {memberCount} member{memberCount === 1 ? "" : "s"} below.
+                  </div>
 
-                  <Field label="Email" error={errors.email} className="sm:col-span-1">
-                    <Input
-                      type="email"
-                      value={values.email}
-                      onChange={(e) => update("email", e.target.value)}
-                      placeholder="you@domain.com"
-                      maxLength={255}
-                      aria-invalid={!!errors.email}
-                    />
-                  </Field>
+                  {memberCount === 0 && (
+                    <div className="rounded-md border border-border/60 bg-background/40 px-3 py-2 text-sm text-muted-foreground">
+                      Solo teams skip this step. Add your idea pitch below.
+                    </div>
+                  )}
 
-                  <Field
-                    label="Idea pitch"
-                    error={errors.idea}
-                    hint={`${values.idea.length}/500`}
-                    className="sm:col-span-2"
-                  >
-                    <Textarea
-                      value={values.idea}
-                      onChange={(e) => update("idea", e.target.value)}
-                      placeholder="In a sentence or two - what are you building?"
-                      rows={5}
-                      maxLength={500}
-                      aria-invalid={!!errors.idea}
-                    />
-                  </Field>
+                  <div className="grid gap-4 sm:grid-cols-2 sm:gap-5">
+                    {memberKeys.slice(0, memberCount).map((member) => (
+                      <div key={`member-${member.number}`} className="contents">
+                        <Field
+                          label={`Member ${member.number} name`}
+                          error={errors[member.nameKey]}
+                          className="sm:col-span-1"
+                        >
+                          <Input
+                            value={values[member.nameKey]}
+                            onChange={(e) => update(member.nameKey, e.target.value)}
+                            placeholder={`Member ${member.number} full name`}
+                            maxLength={80}
+                            aria-invalid={!!errors[member.nameKey]}
+                          />
+                        </Field>
+
+                        <Field
+                          label={`Member ${member.number} email`}
+                          error={errors[member.emailKey]}
+                          className="sm:col-span-1"
+                        >
+                          <Input
+                            type="email"
+                            value={values[member.emailKey]}
+                            onChange={(e) => update(member.emailKey, e.target.value)}
+                            placeholder={`member${member.number}@domain.com`}
+                            maxLength={255}
+                            aria-invalid={!!errors[member.emailKey]}
+                          />
+                        </Field>
+
+                        <Field
+                          label={`Member ${member.number} branch`}
+                          error={errors[member.branchKey]}
+                          className="sm:col-span-1"
+                        >
+                          <Input
+                            value={values[member.branchKey]}
+                            onChange={(e) => update(member.branchKey, e.target.value)}
+                            placeholder="Computer Science"
+                            maxLength={80}
+                            aria-invalid={!!errors[member.branchKey]}
+                          />
+                        </Field>
+
+                        <Field
+                          label={`Member ${member.number} year`}
+                          error={errors[member.yearKey]}
+                          className="sm:col-span-1"
+                        >
+                          <Input
+                            value={values[member.yearKey]}
+                            onChange={(e) => update(member.yearKey, e.target.value)}
+                            placeholder="3"
+                            maxLength={20}
+                            aria-invalid={!!errors[member.yearKey]}
+                          />
+                        </Field>
+
+                        <Field
+                          label={`Member ${member.number} gender`}
+                          error={errors[member.genderKey]}
+                          className="sm:col-span-2"
+                        >
+                          <Select
+                            value={values[member.genderKey]}
+                            onValueChange={(v) => update(member.genderKey, v)}
+                          >
+                            <SelectTrigger aria-invalid={!!errors[member.genderKey]}>
+                              <SelectValue placeholder="Select gender" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {GENDER_OPTIONS.map((option) => (
+                                <SelectItem key={option.value} value={option.value}>
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </Field>
+                      </div>
+                    ))}
+
+                    <Field
+                      label="Idea pitch"
+                      error={errors.ideaPitch}
+                      hint={`${values.ideaPitch.length}/1000`}
+                      className="sm:col-span-2"
+                    >
+                      <Textarea
+                        value={values.ideaPitch}
+                        onChange={(e) => update("ideaPitch", e.target.value)}
+                        placeholder="In a sentence or two - what are you building?"
+                        rows={5}
+                        maxLength={1000}
+                        aria-invalid={!!errors.ideaPitch}
+                      />
+                    </Field>
+                  </div>
                 </div>
               )}
 
@@ -452,18 +661,22 @@ export function Registration() {
                     <ReviewItem label="Team Name" value={values.teamName} />
                     <ReviewItem label="Team Size" value={values.teamSize} />
                     <ReviewItem label="Track" value={trackLabel(values.track)} />
-                    <ReviewItem label="College" value={values.college} />
-                    <ReviewItem label="Full Name" value={values.fullName} />
-                    <ReviewItem label="Email" value={values.email} />
-                    {MEMBER_FIELDS.slice(0, selectedMemberCount).map((member) => (
+                    <ReviewItem label="College" value={values.collegeName} />
+                    <ReviewItem label="Leader" value={values.leaderName} />
+                    <ReviewItem label="Leader Email" value={values.leaderEmail} />
+                    <ReviewItem label="Leader Phone" value={values.leaderPhone} />
+                    <ReviewItem label="Leader Branch" value={values.leaderBranch} />
+                    <ReviewItem label="Leader Year" value={values.leaderYear} />
+                    <ReviewItem label="Leader Gender" value={genderLabel(values.leaderGender)} />
+                    {memberKeys.slice(0, memberCount).map((member) => (
                       <ReviewItem
                         key={`review-${member.number}`}
                         label={`Member ${member.number}`}
-                        value={`${values[member.nameKey]} (${genderLabel(values[member.genderKey])})`}
+                        value={`${values[member.nameKey]} · ${values[member.emailKey]} · ${values[member.branchKey]} · ${values[member.yearKey]} · ${genderLabel(values[member.genderKey])}`}
                       />
                     ))}
                     <div className="sm:col-span-2">
-                      <ReviewItem label="Idea" value={values.idea} />
+                      <ReviewItem label="Idea" value={values.ideaPitch} />
                     </div>
                   </div>
                 </div>
@@ -543,6 +756,7 @@ function genderLabel(gender: string) {
   if (gender === "male") return "Male";
   if (gender === "female") return "Female";
   if (gender === "other") return "Other";
+  if (gender === "prefer_not_to_say") return "Prefer not to say";
   return "-";
 }
 
@@ -557,7 +771,7 @@ function Field({
   error?: string;
   hint?: string;
   className?: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <div className={className}>
@@ -565,14 +779,10 @@ function Field({
         <Label className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
           {label}
         </Label>
-        {hint && (
-          <span className="font-mono text-[10px] text-muted-foreground">{hint}</span>
-        )}
+        {hint && <span className="font-mono text-[10px] text-muted-foreground">{hint}</span>}
       </div>
       {children}
-      {error && (
-        <p className="mt-1.5 font-mono text-[11px] text-destructive">{error}</p>
-      )}
+      {error && <p className="mt-1.5 font-mono text-[11px] text-destructive">{error}</p>}
     </div>
   );
 }
