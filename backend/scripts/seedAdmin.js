@@ -19,15 +19,13 @@ const seedAdmin = async () => {
     await Admin.db.close();
     process.exit(0);
   }
-
-  const hashedPassword = await bcrypt.hash(password, 10);
-
-  await Admin.create({
-    name,
-    email,
-    password: hashedPassword,
-    role: 'admin',
-  });
+console.log("Password from .env:", JSON.stringify(password));
+ await Admin.create({
+  name,
+  email,
+  password: password,
+  role: 'admin',
+});
 
   console.log(`Seeded admin account: ${email}`);
   await Admin.db.close();
